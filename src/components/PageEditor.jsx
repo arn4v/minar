@@ -6,9 +6,9 @@ import { PageHeading } from "./PageHeading";
 
 export function PageEditor() {
   const { id } = useParams();
-  const page = useStore((state) => {
+  const { page } = useStore((state) => {
     const page = state.data.pages[id];
-    return page;
+    return { page };
   });
 
   return (

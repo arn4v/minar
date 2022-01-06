@@ -6,10 +6,8 @@ export function Router() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/">
-          <Route index element={<AllPage />} />
-          <Route path="page/:id" element={<Page />} />
-        </Route>
+        <Route path="/" element={<AllPage />} />
+        <Route path="/page/:id" element={<Page />} />
       </Routes>
     </BrowserRouter>
   );

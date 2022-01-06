@@ -8,7 +8,11 @@ const parseBlockContent = (content) => {
 };
 
 export function Block({ id, blockChildren }) {
-  const block = useStore((state) => state.data.blocks[id]);
+  const blocks = useStore((state) => state.data.blocks);
+
+  console.log(id, blockChildren, blocks);
+
+  return null;
 
   return (
     <div className="flex flex-col">
