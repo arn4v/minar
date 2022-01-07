@@ -40,12 +40,14 @@ const rootSlice = createSlice({
         },
       });
     },
+
     renamePage(state, action: PayloadAction<{ id: string; title: string }>) {
       const { id, title } = action.payload;
 
       state.data.pages[id].title = title;
       state.data.pages[id].updatedAt = new Date().toISOString();
     },
+
     createBlock(
       state,
       {
@@ -71,20 +73,26 @@ const rootSlice = createSlice({
         updatedAt: new Date().toISOString(),
       };
 
+      if (state.activePage) {
+        state.activeBlock = id;
+      }
+
       if (pageId && !blockId) {
         state.data.pages[pageId].children.push({ id });
       } else if (pageId && blockId) {
         state.data.blocks[blockId].children.push({ id });
       }
     },
-    updateBlockContent(
+    updateBlock(
       state,
       {
-        payload: { content, id },
-      }: PayloadAction<{ content: string; id: string }>
+        payload,
+      }: PayloadAction<{ content: string; id: string; type?: BlockType }>
     ) {
+      const { content, id, type } = payload;
       state.data.blocks[id].content = content;
       state.data.blocks[id].updatedAt = new Date().toISOString();
+      if (type) state.data.blocks[id].type = type;
     },
 
     deleteChildUnderBlock(

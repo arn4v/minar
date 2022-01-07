@@ -1,6 +1,5 @@
 import * as React from "react";
 import { useDispatch } from "react-redux";
-import { Link, useParams } from "react-router-dom";
 import { actions, store, useAppSelector } from "../store";
 import { BlockList } from "./BlockList";
 
@@ -69,8 +68,8 @@ const getBlockType = (content) => {
 };
 
 export function Block({ id, blockChildren }) {
-  const pageId = useParams().id;
-  const { activeBlock, block } = useAppSelector((state) => ({
+  const { activeBlock, block, pageId } = useAppSelector((state) => ({
+    pageId: state.activePage,
     block: state.data.blocks[id],
     activeBlock: state.activeBlock,
   }));
@@ -88,7 +87,7 @@ export function Block({ id, blockChildren }) {
         e.preventDefault();
         dispatch(
           actions.createBlock({
-            content: "New block",
+            content: "",
             type: "p",
             pageId,
           })
@@ -124,14 +123,14 @@ export function Block({ id, blockChildren }) {
             autoFocus
             value={block.content}
             onKeyDown={onKeyDown}
-            onChange={(e) =>
+            onChange={(e) => {
               dispatch(
-                actions.updateBlockContent({
+                actions.updateBlock({
                   id: block.id,
                   content: e.target.value,
                 })
-              )
-            }
+              );
+            }}
           />
         ) : (
           <div

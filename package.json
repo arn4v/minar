@@ -1,6 +1,7 @@
 {
   "name": "minar",
   "version": "0.0.0",
+  "author": "Arnav Gosain <arnav@arnavgosain.com>",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
