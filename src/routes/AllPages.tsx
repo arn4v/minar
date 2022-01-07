@@ -2,7 +2,7 @@ import * as React from "react";
 import { Link } from "react-router-dom";
 import { actions, useAppDispatch, useAppSelector } from "../store";
 
-export function AllPage() {
+export function AllPages() {
   const dispatch = useAppDispatch();
   const [pageTitle, setPageTitle] = React.useState("");
   const { pages } = useAppSelector((state) => ({

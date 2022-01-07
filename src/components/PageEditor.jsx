@@ -12,7 +12,7 @@ export function PageEditor() {
   if (!pageId || !page) return null;
 
   return (
-    <div className="block w-full">
+    <div className="block w-[80%] h-full mx-auto my-auto">
       <PageHeading pageId={pageId} />
       <div className="mt-8 flex flex-col w-full">
         <BlockList blockChildren={page.children} />

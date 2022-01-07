@@ -15,7 +15,16 @@ export function Page() {
   return (
     <div className="flex items-start justify-start h-screen w-screen bg-gray-200">
       <Sidebar />
-      <div className="w-full h-full px-24 py-10">
+      <div
+        className="w-full h-full"
+        onBlur={() => {
+          dispatch(actions.setActiveBlock({ id: null }));
+        }}
+        onClick={(e) => {
+          // e.stopPropagation();
+          // dispatch(actions.setActiveBlock({ id: null }));
+        }}
+      >
         <PageEditor />
       </div>
     </div>

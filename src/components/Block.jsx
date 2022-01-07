@@ -77,8 +77,29 @@ export function Block({ id, blockChildren }) {
   const parsedContent = React.useMemo(() => {
     return parseBlockContent(block?.content ?? "");
   }, [block.content]);
+  const blurTime = React.useRef(null);
+  const caretPos = React.useRef(null);
+  /** @type {React.MutableRefObject<HTMLTextAreaElement>} */
+  const textAreaRef = React.useRef(null);
 
-  console.log(block, id, pageId);
+  React.useEffect(() => {
+    const listener = () => {
+      const windowBlurTime = new Date().getTime();
+      if (windowBlurTime - blurTime?.current < 100) {
+        dispatch(actions.setActiveBlock({ id }));
+        if (textAreaRef?.current && caretPos.current) {
+          textAreaRef.current?.setSelectionRange(
+            caretPos.current,
+            caretPos.current
+          );
+        }
+      }
+    };
+
+    window.addEventListener("blur", listener);
+
+    return () => window.removeEventListener("blur", listener);
+  }, []);
 
   /** @param {React.KeyboardEvent<HTMLDivElement>} e */
   const onKeyDown = (e) => {
@@ -92,6 +113,9 @@ export function Block({ id, blockChildren }) {
             pageId,
           })
         );
+        break;
+      }
+      case activeBlock === block.id && e.shiftKey && e.key === "Enter": {
         break;
       }
       case e.shiftKey && e.key === "Enter": {
@@ -112,12 +136,16 @@ export function Block({ id, blockChildren }) {
     <div
       className="flex flex-col w-full"
       onClick={() => dispatch(actions.setActiveBlock({ id: block.id }))}
-      // onBlur={() => dispatch(actions.setActiveBlock({ id: null }))}
     >
-      <div className="flex flex-row space-x-3 items-center w-full">
+      <div className="flex space-x-3 items-start w-full">
         <span className="cursor-pointer">{"• "}</span>
         {activeBlock === block.id ? (
           <textarea
+            onBlur={(e) => {
+              blurTime.current = new Date().getTime();
+              caretPos.current = e.currentTarget.selectionStart;
+            }}
+            ref={textAreaRef}
             className="w-full focus:outline-none bg-transparent resize-none"
             autoCapitalize="none"
             autoFocus
@@ -133,7 +161,7 @@ export function Block({ id, blockChildren }) {
             }}
           />
         ) : (
-          <div
+          <span
             className="w-full"
             dangerouslySetInnerHTML={{ __html: parsedContent }}
           />
