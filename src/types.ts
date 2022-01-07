@@ -5,12 +5,11 @@ export type Page = {
   title: string;
   createdAt: string;
   updatedAt: string;
-  children: Children[];
+  children: Child[];
 };
 
-export type Children = {
+export type Child = {
   id: string;
-  children: string[];
 };
 
 export type Block = {
@@ -18,6 +17,7 @@ export type Block = {
   type: BlockType;
   content: string;
   parentId: string | null;
+  children: Child[];
   pageId: string;
   createdAt: string;
   updatedAt: string;

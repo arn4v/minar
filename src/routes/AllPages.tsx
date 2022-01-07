@@ -1,31 +1,20 @@
 import * as React from "react";
 import { Link } from "react-router-dom";
-import { useStore } from "../store";
+import { actions, useAppDispatch, useAppSelector } from "../store";
 
 export function AllPage() {
+  const dispatch = useAppDispatch();
   const [pageTitle, setPageTitle] = React.useState("");
-  const { createPage, pages, createBlock, addPrimaryBlockToPage } = useStore(
-    (state) => ({
-      pages: state.data.pages,
-      createPage: state.actions.createPage,
-      createBlock: state.actions.createBlock,
-      addPrimaryBlockToPage: state.actions.addPrimaryBlockToPage,
-    })
-  );
+  const { pages } = useAppSelector((state) => ({
+    pages: state.data.pages,
+  }));
 
   return (
     <div>
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          const { id: pageId } = createPage({ title: pageTitle });
-          const { id: blockId } = createBlock({
-            content: "This is the first block, click here to edit",
-            type: "p",
-            pageId: pageId,
-          });
-          addPrimaryBlockToPage({ blockId, pageId });
-
+          dispatch(actions.createPage({ title: pageTitle }));
           setPageTitle("");
         }}
       >

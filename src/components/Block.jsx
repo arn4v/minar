@@ -17,7 +17,6 @@ export function Block({ id, blockChildren }) {
 
   /** @param {React.KeyboardEvent<HTMLDivElement>} e */
   const onKeyDown = (e) => {
-    console.log(e.shiftKey);
     switch (true) {
       case !e.shiftKey && e.key === "Enter": {
         e.preventDefault();
@@ -55,11 +54,10 @@ export function Block({ id, blockChildren }) {
     >
       <div className="flex flex-row space-x-3 items-center">
         <span className="cursor-pointer">{"• "}</span>
-        <ContentEditable
-          ref={contentEditableRef}
-          html={parseBlockContent(block.content)}
-          className="px-2 py-0.5"
-          onKeyDown={onKeyDown}
+        <div
+          className="w-full"
+          dangerouslySetInnerHTML={{ __html: block.content }}
+          onFocus={() => {}}
         />
       </div>
       <div className="block-children mt-2">
