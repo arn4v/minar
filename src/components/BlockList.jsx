@@ -8,7 +8,7 @@ export function BlockList({ blockChildren }) {
       className={clsx("ml-7 flex flex-col items-start justify-start w-full")}
     >
       {blockChildren.map((item) => (
-        <Block id={item.id} blockChildren={item.children} />
+        <Block id={item.id} />
       ))}
     </div>
   );

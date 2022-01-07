@@ -1,18 +1,18 @@
 import * as React from "react";
 import { debounce } from "lodash-es";
-import { useStore } from "../store";
+import { actions, useAppDispatch, useAppSelector } from "../store";
 
 export function PageHeading({ pageId }) {
-  const { pageTitle, renamePage } = useStore((state) => ({
+  const { pageTitle } = useAppSelector((state) => ({
     pageTitle: state.data.pages[pageId].title,
-    renamePage: state.actions.renamePage,
   }));
+  const dispatch = useAppDispatch();
 
   const onTitleChange = React.useMemo(() => {
     return debounce((e) => {
-      renamePage({ id: pageId, title: e.target.innerHTML });
+      dispatch(actions.renamePage({ id: pageId, title: e.target.innerHTML }));
     }, 200);
-  }, [renamePage, pageId]);
+  }, [dispatch, pageId]);
 
   return (
     <h1

@@ -1,136 +1,12 @@
-import create from "zustand";
-import { v4 as uuid, v4 } from "uuid";
-import { persist } from "zustand/middleware";
-import { Block, BlockType, Graph } from "./types";
 import { configureStore, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux";
-
-// interface Store {
-//   data: Graph;
-//   actions: {
-//     createPage(args: { title: string }): { id: string };
-//     renamePage(args: { id: string; title: string }): void;
-//     createBlock(args: { content: string; pageid: string; type: blocktype }): {
-//       id: string;
-//     };
-//     updateBlockContent(args: { content: string; id: string }): void;
-//     addPrimaryBlockToPage(args: { pageId: string; blockId: string }): void;
-//     updateBlockChildrenOrder(args: {}): void;
-//     rearrangeBlocks(): void;
-//     rearrangeParentBlock(): void;
-//     addChildrenToBlock(
-//       blockId: string,
-//       newBlock: Omit<Block, "id" | "createdAt">
-//     ): void;
-//   };
-// }
-
-// export const useStore = create<Store>((set, get) => ({
-//   data: {
-//     pages: {},
-//     blocks: {},
-//     pageReferences: {},
-//   },
-//   actions: {
-//     createPage({ title }) {
-//       const id = v4();
-//       set((prev) => ({
-//         data: {
-//           ...prev.data,
-//           pages: {
-//             ...prev.data.pages,
-//             [id]: {
-//               id,
-//               title,
-//               createdAt: new Date().toISOString(),
-//               updatedAt: new Date().toISOString(),
-//               children: [],
-//             },
-//           },
-//         },
-//       }));
-//       return { id };
-//     },
-//     renamePage({ id, title }) {
-//       set((prev) => ({
-//         data: {
-//           ...prev.data,
-//           pages: {
-//             ...prev.data.pages,
-//             [id]: {
-//               ...prev.data.pages[id],
-//               title,
-//               updatedAt: new Date().toISOString(),
-//             },
-//           },
-//         },
-//       }));
-//     },
-//     createBlock({ content, pageId, type }) {
-//       const id = uuid();
-
-//       set((prev) => ({
-//         data: {
-//           ...prev.data,
-//           blocks: {
-//             ...prev.data.blocks,
-//             [id]: {
-//               id,
-//               pageId,
-//               content,
-//               parentId: null,
-//               type,
-//               createdAt: new Date().toISOString(),
-//               updatedAt: new Date().toISOString(),
-//             },
-//           },
-//         },
-//       }));
-
-//       return { id };
-//     },
-//     updateBlockContent({ content, id }) {
-//       set((prev) => ({
-//         data: {
-//           ...prev.data,
-//           blocks: {
-//             ...prev.data.blocks,
-//             [id]: {
-//               ...prev.data.blocks[id],
-//               content,
-//               updatedAt: new Date().toISOString(),
-//             },
-//           },
-//         },
-//       }));
-//     },
-//     addPrimaryBlockToPage({ pageId, blockId }) {
-//       set((prev) => ({
-//         data: {
-//           ...prev.data,
-//           pages: {
-//             [pageId]: {
-//               ...prev.data.pages[pageId],
-//               children: [
-//                 ...prev.data.pages[pageId].children,
-//                 { id: blockId, children: [] },
-//               ],
-//             },
-//           },
-//         },
-//       }));
-//     },
-//     updateBlockChildrenOrder() {},
-//     addChildrenToBlock() {},
-//     rearrangeBlocks() {},
-//     rearrangeParentBlock() {},
-//   },
-// }));
+import { v4 as uuid, v4 } from "uuid";
+import { BlockType, Graph } from "./types";
 
 const rootSlice = createSlice({
   name: "root",
   initialState: {
-    currentPage: null,
+    activePage: null,
     activeBlock: null,
     data: {
       pages: {},
@@ -138,7 +14,7 @@ const rootSlice = createSlice({
       pageReferences: {},
     },
   } as {
-    currentPage: string | null;
+    activePage: string | null;
     activeBlock: string | null;
     data: Graph;
   },
@@ -155,26 +31,20 @@ const rootSlice = createSlice({
         children: [],
       };
 
-      this.createBlock({
-        content: "This is the first block, click here to edit",
-        type: "p",
-        pageId: id,
+      rootSlice.caseReducers.createBlock(state, {
+        type: "createBlock",
+        payload: {
+          type: "p",
+          content: "This is the first block, click here to edit",
+          pageId: id,
+        },
       });
     },
     renamePage(state, action: PayloadAction<{ id: string; title: string }>) {
-      // set((prev) => ({
-      //   data: {
-      //     ...prev.data,
-      //     pages: {
-      //       ...prev.data.pages,
-      //       [id]: {
-      //         ...prev.data.pages[id],
-      //         title,
-      //         updatedAt: new Date().toISOString(),
-      //       },
-      //     },
-      //   },
-      // }));
+      const { id, title } = action.payload;
+
+      state.data.pages[id].title = title;
+      state.data.pages[id].updatedAt = new Date().toISOString();
     },
     createBlock(
       state,
@@ -216,12 +86,88 @@ const rootSlice = createSlice({
       state.data.blocks[id].content = content;
       state.data.blocks[id].updatedAt = new Date().toISOString();
     },
-    updatePageChildrenOrder() {},
-    updateBlockChildrenOrder(state, action) {},
-    removeBlockFromParentBlock() {},
-    addChildrenToBlock(state, action) {},
-    rearrangeBlocks(state, action) {},
-    rearrangeParentBlock(state, action) {},
+
+    deleteChildUnderBlock(
+      state,
+      action: PayloadAction<{ parentId: string; childId: string }>
+    ) {
+      const { childId, parentId } = action.payload;
+
+      state.data.blocks[parentId].children = state.data.blocks[
+        parentId
+      ].children.filter((item) => item.id === childId);
+
+      delete state.data.blocks[childId];
+    },
+
+    movePageChildToBlock() {},
+
+    //> Moves block child to another block
+    moveBlockChildToAnotherBlock(
+      state,
+      action: PayloadAction<{ parentId: string; childId: string }>
+    ) {
+      const { childId, parentId } = action.payload;
+
+      state.data.blocks[parentId].children = state.data.blocks[
+        parentId
+      ].children.filter((item) => item.id === childId);
+
+      delete state.data.blocks[childId];
+    },
+
+    // Moves an indented block to data.pages[id].children (primary block)
+    //
+    // If user is focused on "Child block" and presses `Shift + Tab`
+    // Remove "Child Block" indentation so it is directly under "Primary block"
+    //
+    // Before:
+    //    * Primary block
+    //      * Child block
+    //
+    // After:
+    //    * Primary block
+    //    * Child block
+    moveBlockChildToPage(
+      state,
+      action: PayloadAction<{
+        pageId: string;
+        parentBlockId: string;
+        childBlockId: string;
+      }>
+    ) {},
+
+    // Removes a block from data.page[id].children array & deletes the block from data.blocks
+    deleteChildUnderPage(
+      state,
+      action: PayloadAction<{ pageId: string; blockId: string }>
+    ) {
+      const { pageId, blockId } = action.payload;
+
+      state.data.pages[pageId].children = state.data.pages[
+        pageId
+      ].children.filter((item) => item.id === blockId);
+
+      delete state.data.blocks[blockId];
+    },
+
+    // Updates position of primary blocks on a page
+    updatePosOfChildInPage() {},
+
+    // Updates position of an indented block w.r.t its parent block
+    updatePosOfChildInBlock() {},
+
+    //> Updates active block Id
+    setActiveBlock(state, action: PayloadAction<{ id: string | null }>) {
+      const { id } = action.payload;
+      state.activeBlock = id;
+    },
+
+    //> Updates active page Id
+    setActivePage(state, action: PayloadAction<{ id: string }>) {
+      const { id } = action.payload;
+      state.activePage = id;
+    },
   },
 });
 
