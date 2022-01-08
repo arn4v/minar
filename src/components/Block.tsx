@@ -3,13 +3,54 @@ import { useDispatch } from "react-redux";
 import { actions, store, useAppSelector } from "../store";
 import { BlockList } from "./BlockList";
 
+const getCaretCoordinates = (fromStart: boolean = true) => {
+  let x: number, y: number;
+  const isSupported = typeof window.getSelection !== "undefined";
+  if (isSupported) {
+    const selection = window.getSelection();
+    if (selection.rangeCount !== 0) {
+      const range = selection.getRangeAt(0).cloneRange();
+      range.collapse(fromStart ? true : false);
+      const rect = range.getClientRects()[0];
+      if (rect) {
+        x = rect.left;
+        y = rect.top;
+      }
+    }
+  }
+  return { x, y };
+};
+
+const getSelection = (element: HTMLElement) => {
+  let selectionStart: number, selectionEnd: number;
+  const isSupported = typeof window.getSelection !== "undefined";
+  if (isSupported) {
+    const range = window.getSelection().getRangeAt(0);
+    const preSelectionRange = range.cloneRange();
+    preSelectionRange.selectNodeContents(element);
+    preSelectionRange.setEnd(range.startContainer, range.startOffset);
+    selectionStart = preSelectionRange.toString().length;
+    selectionEnd = selectionStart + range.toString().length;
+  }
+
+  return { selectionStart, selectionEnd };
+};
+
+const setCaretToEnd = (element: HTMLElement) => {
+  const range = document.createRange();
+  const selection = window.getSelection();
+  range.selectNodeContents(element);
+  range.collapse(false);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  element.focus();
+};
+
 /**
  * @description Replace [[Link]] with <Link to="/page/:od">[[Link]]</Link>
- * @param {string} content
  */
-const replaceLinkRefsInContent = (content) => {
+const replaceLinkRefsInContent = (content: string) => {
   const matches = content.match(/\[\[(.*?)\]\]/g);
-  console.log("Link refs", matches);
 
   // matches.forEach((match) => {
   //   console.log(match);
@@ -20,11 +61,9 @@ const replaceLinkRefsInContent = (content) => {
 
 /**
  * @description Replace ((blockId)) with block link
- * @param {string} content
  */
-const replaceBlockRefsInContent = (content) => {
+const replaceBlockRefsInContent = (content: string) => {
   const matches = content.match(/\(\((.*?)\)\)/g);
-  console.log("Blocks refs", matches);
 
   // matches.forEach((match) => {
   //   console.log(match);
@@ -33,10 +72,9 @@ const replaceBlockRefsInContent = (content) => {
   return content;
 };
 
-/** @param {string} content */
-const parseBlockContent = (content) => {
+const parseBlockContent = (content: string) => {
   content = content
-    .replace("#", "")
+    .replace(/(#|##|###) /g, "")
     .replace("##", "")
     .replace("###", "")
     .replace(/(?:\*)(?:(?!\s))((?:(?!\*|\n).)+)(?:\*)/g, "<b>$1</b>")
@@ -50,18 +88,18 @@ const parseBlockContent = (content) => {
   return content;
 };
 
-const getBlockType = (content) => {
+const getBlockType = (content: string) => {
   switch (true) {
-    case content.startsWith("###"): {
+    case content.startsWith("### "): {
       return "h3";
     }
-    case content.startsWith("##"): {
+    case content.startsWith("## "): {
       return "h2";
     }
-    case content.startsWith("#"): {
+    case content.startsWith("# "): {
       return "h1";
     }
-    case !content.startsWith("#"): {
+    case !content.startsWith("# "): {
       return "p";
     }
   }
@@ -78,19 +116,21 @@ export function Block({ id, blockChildren }) {
     return parseBlockContent(block?.content ?? "");
   }, [block.content]);
   const blurTime = React.useRef(null);
-  const caretPos = React.useRef(null);
-  /** @type {React.MutableRefObject<HTMLTextAreaElement>} */
-  const textAreaRef = React.useRef(null);
+  const beforeBlurTextareaCaretPost = React.useRef(null);
+  const onDivClickSelection = React.useRef<Range>(null);
+
+  const textAreaRef = React.useRef<HTMLTextAreaElement>(null);
+  const renderedRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     const listener = () => {
       const windowBlurTime = new Date().getTime();
       if (windowBlurTime - blurTime?.current < 100) {
         dispatch(actions.setActiveBlock({ id }));
-        if (textAreaRef?.current && caretPos.current) {
+        if (textAreaRef?.current && beforeBlurTextareaCaretPost.current) {
           textAreaRef.current?.setSelectionRange(
-            caretPos.current,
-            caretPos.current
+            beforeBlurTextareaCaretPost.current,
+            beforeBlurTextareaCaretPost.current
           );
         }
       }
@@ -101,8 +141,7 @@ export function Block({ id, blockChildren }) {
     return () => window.removeEventListener("blur", listener);
   }, []);
 
-  /** @param {React.KeyboardEvent<HTMLDivElement>} e */
-  const onKeyDown = (e) => {
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     switch (true) {
       case !e.shiftKey && e.key === "Enter": {
         e.preventDefault();
@@ -136,14 +175,21 @@ export function Block({ id, blockChildren }) {
     <div
       className="flex flex-col w-full"
       onClick={() => dispatch(actions.setActiveBlock({ id: block.id }))}
+      onBlur={() => dispatch(actions.setActiveBlock({ id: null }))}
     >
       <div className="flex space-x-3 items-start w-full">
-        <span className="cursor-pointer">{"• "}</span>
+        <div className="cursor-pointer">{"• "}</div>
         {activeBlock === block.id ? (
           <textarea
+            onLoad={() => {
+              const s = window.getSelection();
+              if (s.rangeCount > 0) s.removeAllRanges();
+              s.addRange(onDivClickSelection.current);
+            }}
             onBlur={(e) => {
               blurTime.current = new Date().getTime();
-              caretPos.current = e.currentTarget.selectionStart;
+              beforeBlurTextareaCaretPost.current =
+                e.currentTarget.selectionStart;
             }}
             ref={textAreaRef}
             className="w-full focus:outline-none bg-transparent resize-none"
@@ -155,14 +201,21 @@ export function Block({ id, blockChildren }) {
               dispatch(
                 actions.updateBlock({
                   id: block.id,
+                  type: getBlockType(e.target.value),
                   content: e.target.value,
                 })
               );
             }}
           />
         ) : (
-          <span
+          <div
+            ref={renderedRef}
             className="w-full"
+            onClick={(e) => {
+              const posX = e.pageX - renderedRef.current?.offsetLeft;
+              const posY = e.pageY - renderedRef.current?.offsetTop;
+              onDivClickSelection.current = window.getSelection().getRangeAt(0);
+            }}
             dangerouslySetInnerHTML={{ __html: parsedContent }}
           />
         )}

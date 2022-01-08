@@ -1,5 +1,6 @@
 import * as React from "react";
-import { useAppSelector } from "../store";
+import { useFirstMountState } from "react-use";
+import { actions, useAppDispatch, useAppSelector } from "../store";
 import { BlockList } from "./BlockList";
 import { PageHeading } from "./PageHeading";
 
@@ -8,6 +9,14 @@ export function PageEditor() {
     page: state.data.pages[state.activePage],
     pageId: state.activePage,
   }));
+  const dispatch = useAppDispatch();
+  const isFirstMount = useFirstMountState();
+
+  React.useEffect(() => {
+    if (isFirstMount) {
+      dispatch(actions.setActiveBlock(page?.children[0]));
+    }
+  }, [dispatch, page]);
 
   if (!pageId || !page) return null;
 

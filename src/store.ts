@@ -1,5 +1,11 @@
 import { configureStore, createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux";
+import {
+  TypedUseSelectorHook,
+  useDispatch,
+  useSelector,
+  Connect,
+  connect,
+} from "react-redux";
 import { v4 as uuid, v4 } from "uuid";
 import { BlockType, Graph } from "./types";
 
@@ -57,9 +63,10 @@ const rootSlice = createSlice({
         pageId: string;
         blockId?: string;
         type: BlockType;
+        makeItActive?: boolean;
       }>
     ) {
-      const { content, pageId, blockId, type } = payload;
+      const { content, pageId, blockId, type, makeItActive = false } = payload;
       const id = uuid();
 
       state.data.blocks[id] = {
@@ -82,6 +89,8 @@ const rootSlice = createSlice({
       } else if (pageId && blockId) {
         state.data.blocks[blockId].children.push({ id });
       }
+
+      if (makeItActive) state.activeBlock = id;
     },
     updateBlock(
       state,
@@ -194,3 +203,5 @@ export const useAppDispatch = () => useDispatch<AppDispatch>();
 
 // Typed Selector
 export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
+
+export const appConnect: Connect<RootState> = connect;
