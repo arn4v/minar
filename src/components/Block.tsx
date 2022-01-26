@@ -1,52 +1,7 @@
-import clsx from "clsx";
-import { text } from "express";
 import * as React from "react";
-import { useDispatch } from "react-redux";
-import { actions, store, useAppSelector } from "../store";
+import { actions, useAppDispatch, useAppSelector } from "../store";
 import { BlockList } from "./BlockList";
-
-// const getCaretCoordinates = (fromStart: boolean = true) => {
-//   let x: number, y: number;
-//   const isSupported = typeof window.getSelection !== "undefined";
-//   if (isSupported) {
-//     const selection = window.getSelection();
-//     if (selection.rangeCount !== 0) {
-//       const range = selection.getRangeAt(0).cloneRange();
-//       range.collapse(fromStart ? true : false);
-//       const rect = range.getClientRects()[0];
-//       if (rect) {
-//         x = rect.left;
-//         y = rect.top;
-//       }
-//     }
-//   }
-//   return { x, y };
-// };
-
-// const getSelection = (element: HTMLElement) => {
-//   let selectionStart: number, selectionEnd: number;
-//   const isSupported = typeof window.getSelection !== "undefined";
-//   if (isSupported) {
-//     const range = window.getSelection().getRangeAt(0);
-//     const preSelectionRange = range.cloneRange();
-//     preSelectionRange.selectNodeContents(element);
-//     preSelectionRange.setEnd(range.startContainer, range.startOffset);
-//     selectionStart = preSelectionRange.toString().length;
-//     selectionEnd = selectionStart + range.toString().length;
-//   }
-
-//   return { selectionStart, selectionEnd };
-// };
-
-// const setCaretToEnd = (element: HTMLElement) => {
-//   const range = document.createRange();
-//   const selection = window.getSelection();
-//   range.selectNodeContents(element);
-//   range.collapse(false);
-//   selection.removeAllRanges();
-//   selection.addRange(range);
-//   element.focus();
-// };
+import { ContentEditable } from "./ContentEditable";
 
 /**
  * @description Replace [[Link]] with <Link to="/page/:od">[[Link]]</Link>
@@ -108,21 +63,43 @@ const getBlockType = (content: string) => {
 };
 
 export function Block({ id, blockChildren }) {
+  /** Content Editable Ref */
+  const contentEditableRef = React.useRef<HTMLDivElement>(null);
+
+  /**
+   * Redux Subscription/Dispatch
+   */
   const { activeBlock, block, pageId } = useAppSelector((state) => ({
     pageId: state.activePage,
     block: state.data.blocks[id],
     activeBlock: state.activeBlock,
   }));
-  const dispatch = useDispatch();
-  const parsedContent = React.useMemo(() => {
-    return parseBlockContent(block?.content ?? "");
+  const dispatch = useAppDispatch();
+
+  const isBlockActive = React.useMemo(
+    () => block?.id === activeBlock,
+    [block?.id, activeBlock]
+  );
+  const blockHtml = React.useMemo(() => {
+    return isBlockActive
+      ? parseBlockContent(block?.content ?? "")
+      : block.content;
   }, [block.content]);
   const blurTime = React.useRef(null);
-  const textAreaRef = React.useRef<HTMLTextAreaElement>(null);
-  const renderedRef = React.useRef<HTMLDivElement>(null);
-  const clickPosRef = React.useRef<{ x: number; y: number }>(null);
 
-  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  /* -------------------------------------------------------------------------- */
+  /*                               Event Handlers                               */
+  /* -------------------------------------------------------------------------- */
+
+  const onFocus = () => dispatch(actions.setActiveBlock({ id: block?.id }));
+
+  const onInput: React.FormEventHandler<HTMLDivElement> = (e) => {
+    dispatch(
+      actions.updateBlock({ id: block?.id, content: e.currentTarget.innerHTML })
+    );
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     switch (true) {
       case !e.shiftKey && e.key === "Enter": {
         e.preventDefault();
@@ -150,8 +127,18 @@ export function Block({ id, blockChildren }) {
         e.preventDefault();
         break;
       }
+      case e.key === "Backspace": {
+        if (e.currentTarget.innerHTML === "") {
+          e.preventDefault();
+        }
+        break;
+      }
     }
   };
+
+  /* -------------------------------------------------------------------------- */
+  /*                                   Effects                                  */
+  /* -------------------------------------------------------------------------- */
 
   React.useEffect(() => {
     const listener = () => {
@@ -168,7 +155,7 @@ export function Block({ id, blockChildren }) {
 
   React.useEffect(() => {
     if (activeBlock === block?.id) {
-      textAreaRef.current?.focus();
+      contentEditableRef.current?.focus();
     }
   }, [activeBlock, block]);
 
@@ -176,51 +163,14 @@ export function Block({ id, blockChildren }) {
     <div className="flex flex-col w-full">
       <div className="flex space-x-3 items-start w-full">
         <div className="cursor-pointer">{"• "}</div>
-        <div className="relative w-full">
-          <textarea
-            ref={textAreaRef}
-            className={clsx(
-              "w-full focus:outline-none bg-transparent resize-none absolute left-0 top-0",
-              activeBlock !== block.id && "opacity-0"
-            )}
-            onBlur={(e) => {
-              dispatch(actions.setActiveBlock({ id: null }));
-              blurTime.current = new Date().getTime();
-            }}
-            value={block.content}
-            onChange={(e) => {
-              dispatch(
-                actions.updateBlock({
-                  id: block.id,
-                  type: getBlockType(e.target.value),
-                  content: e.target.value,
-                })
-              );
-            }}
-            onKeyDown={onKeyDown}
-            autoCapitalize="none"
-          />
-          <div
-            ref={renderedRef}
-            style={{
-              wordBreak: "break-word",
-              overflowWrap: "break-word",
-            }}
-            className={clsx(
-              "w-full absolute left-0 top-0",
-              activeBlock === block.id && "invisible"
-            )}
-            onClick={(e) => {
-              dispatch(actions.setActiveBlock({ id: block.id }));
-            }}
-            onBlur={() => dispatch(actions.setActiveBlock({ id: null }))}
-            dangerouslySetInnerHTML={{
-              __html: block?.content.length
-                ? parsedContent
-                : "<i>Click here to edit block...</i>",
-            }}
-          />
-        </div>
+        <ContentEditable
+          className="outline-none"
+          ref={contentEditableRef}
+          html={blockHtml}
+          onKeyDown={onKeyDown}
+          onFocus={onFocus}
+          onInput={onInput}
+        />
       </div>
       <div className="block-children mt-2 pl-4">
         <BlockList blockChildren={block.children} />
